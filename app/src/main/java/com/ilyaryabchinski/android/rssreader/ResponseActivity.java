@@ -5,53 +5,50 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.ListView;
-import com.ilyaryabchinski.android.rssreader.R;
+import android.widget.Toast;
 
-/**
- * Created by ilya on 6/20/17.
- */
+
+
 
 public class ResponseActivity extends AppCompatActivity {
 
     private SharedPreferences pref;
+    private SwipeRefreshLayout layout;
+    private Container container;
+    ListView listView;
+    ArrayAdapter<RSSItem> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_response);
+        layout = (SwipeRefreshLayout) findViewById(R.id.refreshLayout);
+        layout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                layout.setRefreshing(true);
+                ( new Handler()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        layout.setRefreshing(false);
+                        getData();
+
+                    }
+
+                }, 3000);
+            }
+        });
         pref = PreferenceManager.getDefaultSharedPreferences(this);
-        RSSParser parser = new RSSParser();
-        String link = pref.getString("link","");
-        final Container container = parser.parse(link);
-        if(container.size() == 0){
-            showMessage();
-            setTitle("Channel is empty");
-        }
-        else {
-            setTitle("Channel: " + container.getName());
-
-            ListView listView = (ListView) findViewById(R.id.listView_content);
-            listView.setClickable(true);
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(container.getItem(position).getLink()));
-                    startActivity(browserIntent);
-                }
-            });
-
-            ArrayAdapter<RSSItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, container.getList());
-
-            listView.setAdapter(adapter);
-        }
+        getData();
 
     }
 
@@ -74,4 +71,31 @@ public class ResponseActivity extends AppCompatActivity {
     }
 
 
+    private void getData(){
+
+        RSSParser parser = new RSSParser();
+        String link = pref.getString("link","");
+        container = parser.parse(link);
+        if(container.size() == 0){
+            showMessage();
+            setTitle("Channel is empty");
+        }
+        else {
+            setTitle("Channel: " + container.getName());
+
+            listView = (ListView) findViewById(R.id.listView_content);
+            listView.setClickable(true);
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(container.getItem(position).getLink()));
+                    startActivity(browserIntent);
+                }
+            });
+
+            adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, container.getList());
+            listView.setAdapter(adapter);
+
+        }
+    }
 }
